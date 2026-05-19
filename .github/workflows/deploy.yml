@@ -39,13 +39,14 @@ jobs:
           terraform_wrapper: false
 
       - name: Terraform Init & Apply
-        working-directory: ./terraform # Ensure this points to your .tf files
+        working-directory: ./terraform
         run: |
           terraform init
           terraform apply -auto-approve
         env:
-          TF_VAR_github_owner: ${{ github.repository_owner }}
-          TF_VAR_github_token: ${{ secrets.GH_PAT }}
+          TF_VAR_account_id: ${{ secrets.AWS_ACCOUNT_ID }}
+          TF_VAR_notification_email: inaki.medina@gmail.com
+          TF_VAR_enable_sqs_trigger: "false"
           
       - name: Update Lambda Image
         run: |
@@ -58,3 +59,19 @@ jobs:
             echo "Lambda function $FUNCTION_NAME not found; there was a Terraform provisioning error."
             exit 1
           fi
+
+      - name: Job summary
+        working-directory: ./terraform
+        run: |
+          URL=$(terraform output -raw lambda_function_url 2>/dev/null || echo "")
+          {
+            echo "## Notification Lambda"
+            echo ""
+            echo "**Test email:** confirm SNS subscription in inbox, then:"
+            echo '```powershell'
+            echo '$env:NOTIFICATION_LAMBDA_URL="'$URL'"'
+            echo '.\send_email_test.ps1'
+            echo '```'
+            echo ""
+            echo "Or POST JSON: \`{\"test\": true}\` to the function URL."
+          } >> "$GITHUB_STEP_SUMMARY"

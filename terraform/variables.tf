@@ -24,4 +24,11 @@ variable "account_id" {
 variable "notification_email" {
   description = "The email address to subscribe to the SNS topic"
   type        = string
-} 
+  default     = "inaki.medina@gmail.com"
+}
+
+variable "enable_sqs_trigger" {
+  description = "Wire Lambda to sales-ticket-queue (leave false until Sales publishes to SQS)"
+  type        = bool
+  default     = false
+}

@@ -1,0 +1,3 @@
+notification_email = "inaki.medina@gmail.com"
+account_id         = "YOUR_AWS_ACCOUNT_ID"
+enable_sqs_trigger = false

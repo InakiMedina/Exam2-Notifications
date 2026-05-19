@@ -1,16 +1,26 @@
-$url = "https://hfchkddca34oeu2mr4u5a3ec5m0lfeay.lambda-url.us-east-1.on.aws/"
+# POST to Lambda Function URL — sends prewritten test email via SNS.
+# 1) Run Notifications terraform apply (or CI)
+# 2) Confirm SNS subscription email from AWS (inbox)
+# 3) Set $url from: terraform output -raw lambda_function_url
+# 4) Run: .\send_email_test.ps1
 
-$payload = @{
-    item  = "Industrial Robot Arm"
-    price = "4500.00"
-    user  = "Inaki Medina"
-} | ConvertTo-Json
+param(
+    [string]$Url = $env:NOTIFICATION_LAMBDA_URL
+)
+
+if (-not $Url) {
+    Write-Error "Set `$Url or env NOTIFICATION_LAMBDA_URL to terraform output lambda_function_url"
+    exit 1
+}
+
+$payload = @{ test = $true } | ConvertTo-Json
 
 try {
-    $response = Invoke-RestMethod -Uri $url -Method Post -Body $payload -ContentType "application/json"
-    Write-Output "Status: Success"
-    Write-Output ($response | ConvertTo-Json -Depth 5)
+    $response = Invoke-RestMethod -Uri $Url -Method Post -Body $payload -ContentType "application/json"
+    Write-Host "Success — check inaki.medina@gmail.com (and spam) for the test email."
+    $response | ConvertTo-Json -Depth 5
 }
 catch {
     Write-Error "Request failed: $_"
+    exit 1
 }
