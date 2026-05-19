@@ -24,3 +24,7 @@ aws lambda create-event-source-mapping `
     --region $region
 
 Write-Host "Done. Re-run Sales\tests\diagnose_sale_email.ps1 — SQS trigger should show Enabled."
+Write-Host ""
+Write-Host "If Notifications Terraform apply fails with 409 'already exists', either:"
+Write-Host "  - Re-run Notifications CI (imports mapping automatically), or"
+Write-Host "  - cd Notifications\terraform && terraform import aws_lambda_event_source_mapping.sqs_trigger[0] <UUID>"

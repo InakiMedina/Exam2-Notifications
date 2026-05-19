@@ -42,6 +42,27 @@ jobs:
         working-directory: ./terraform
         run: terraform init
 
+      - name: Import existing SQS trigger (if created outside Terraform)
+        working-directory: ./terraform
+        env:
+          TF_VAR_notification_email: inaki.medina@gmail.com
+          TF_VAR_enable_sqs_trigger: "true"
+        run: |
+          if terraform state show 'aws_lambda_event_source_mapping.sqs_trigger[0]' >/dev/null 2>&1; then
+            echo "SQS event source mapping already in state."
+            exit 0
+          fi
+          MAP_UUID=$(aws lambda list-event-source-mappings \
+            --function-name SalesNotificationHandler \
+            --query "EventSourceMappings[?contains(EventSourceArn, 'sales-ticket-queue')].UUID | [0]" \
+            --output text)
+          if [ -z "$MAP_UUID" ] || [ "$MAP_UUID" = "None" ]; then
+            echo "No existing SQS mapping to import."
+            exit 0
+          fi
+          echo "Importing event source mapping UUID=$MAP_UUID into Terraform state..."
+          terraform import 'aws_lambda_event_source_mapping.sqs_trigger[0]' "$MAP_UUID"
+
       - name: Terraform Plan (guard wrong state)
         working-directory: ./terraform
         run: |
