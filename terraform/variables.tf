@@ -16,11 +16,6 @@ variable "lambda_function_name" {
   default     = "SalesNotificationHandler"
 }
 
-variable "account_id" {
-  description = "The AWS Account ID"
-  type        = string
-}
-
 variable "notification_email" {
   description = "The email address to subscribe to the SNS topic"
   type        = string

@@ -38,13 +38,23 @@ jobs:
           terraform_version: "1.7.0"
           terraform_wrapper: false
 
-      - name: Terraform Init & Apply
+      - name: Terraform Init
+        working-directory: ./terraform
+        run: terraform init
+
+      - name: Terraform Plan (guard wrong state)
         working-directory: ./terraform
         run: |
-          terraform init
-          terraform apply -auto-approve
+          terraform plan -no-color -out=tfplan 2>&1 | tee plan.txt
+          if grep -E 'aws_(instance|security_group)\.(sales|catalog)' plan.txt; then
+            echo "::error::State file looks like Catalog/Sales, not Notifications. See terraform/STATE-FIX.md"
+            exit 1
+          fi
+
+      - name: Terraform Apply
+        working-directory: ./terraform
+        run: terraform apply -auto-approve tfplan
         env:
-          TF_VAR_account_id: ${{ secrets.AWS_ACCOUNT_ID }}
           TF_VAR_notification_email: inaki.medina@gmail.com
           TF_VAR_enable_sqs_trigger: "false"
           
