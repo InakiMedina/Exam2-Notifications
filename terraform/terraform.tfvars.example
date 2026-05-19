@@ -1,2 +1,2 @@
 notification_email = "inaki.medina@gmail.com"
-enable_sqs_trigger = false
+enable_sqs_trigger = true

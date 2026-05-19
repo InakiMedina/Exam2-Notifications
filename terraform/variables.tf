@@ -23,7 +23,7 @@ variable "notification_email" {
 }
 
 variable "enable_sqs_trigger" {
-  description = "Wire Lambda to sales-ticket-queue (leave false until Sales publishes to SQS)"
+  description = "Wire Lambda to sales-ticket-queue (Sales publishes on each POST /sales/)"
   type        = bool
-  default     = false
+  default     = true
 }

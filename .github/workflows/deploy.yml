@@ -56,7 +56,7 @@ jobs:
         run: terraform apply -auto-approve tfplan
         env:
           TF_VAR_notification_email: inaki.medina@gmail.com
-          TF_VAR_enable_sqs_trigger: "false"
+          TF_VAR_enable_sqs_trigger: "true"
           
       - name: Update Lambda Image
         run: |
