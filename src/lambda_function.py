@@ -49,24 +49,66 @@ def _format_sale_email(data: dict) -> tuple[str, str]:
     return subject, message
 
 
+def _normalize_payload(data) -> dict:
+    """Unwrap SNS→SQS envelopes and double-encoded JSON bodies."""
+    if isinstance(data, str):
+        try:
+            data = json.loads(data)
+        except json.JSONDecodeError:
+            return {}
+    if not isinstance(data, dict):
+        return {}
+
+    if "Message" in data:
+        inner = data["Message"]
+        if isinstance(inner, str):
+            try:
+                inner = json.loads(inner)
+            except json.JSONDecodeError:
+                inner = None
+        if isinstance(inner, dict):
+            return _normalize_payload(inner)
+
+    # Legacy / manual test payloads (no event/folio keys)
+    if data.get("order_id") and not data.get("folio"):
+        data = {
+            **data,
+            "event": "sale_created",
+            "folio": str(data["order_id"]),
+            "sale_id": data.get("sale_id", 0),
+            "client_id": data.get("client_id", 0),
+            "total": data.get("total", data.get("price", "0")),
+            "contents": data.get("contents") or [],
+        }
+
+    return data
+
+
 def _payloads_from_event(event) -> list[dict]:
     if isinstance(event, dict) and event.get("Records"):
         out = []
         for record in event["Records"]:
             raw = record.get("body", "{}")
             try:
-                out.append(json.loads(raw) if isinstance(raw, str) else raw)
+                parsed = json.loads(raw) if isinstance(raw, str) else raw
             except json.JSONDecodeError:
                 print(f"Invalid SQS body: {raw!r}")
+                continue
+            out.append(_normalize_payload(parsed))
         return out
 
     if isinstance(event, dict) and "body" in event and event["body"]:
         raw = event["body"]
-        data = json.loads(raw) if isinstance(raw, str) else raw
-        return [data] if isinstance(data, dict) else []
+        try:
+            parsed = json.loads(raw) if isinstance(raw, str) else raw
+        except json.JSONDecodeError:
+            return []
+        normalized = _normalize_payload(parsed)
+        return [normalized] if normalized else []
 
     if isinstance(event, dict):
-        return [event]
+        normalized = _normalize_payload(event)
+        return [normalized] if normalized else []
     return []
 
 
@@ -75,8 +117,11 @@ def _publish_one(data: dict) -> tuple[str, str]:
         return "Exam2 Notification — prewritten test", PREWRITTEN_TEST_MESSAGE
 
     if data.get("event") == "sale_created" or data.get("folio"):
-        return _format_sale_email(data)
+        subject, message = _format_sale_email(data)
+        print(f"Formatting sale email folio={data.get('folio')} sale_id={data.get('sale_id')}")
+        return subject, message
 
+    print(f"Unrecognized payload keys={list(data.keys())!r}; using legacy template")
     item = data.get("item", "N/A")
     price = data.get("price", "0")
     user = data.get("user", "Unknown")

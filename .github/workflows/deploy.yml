@@ -70,6 +70,20 @@ jobs:
             exit 1
           fi
 
+      - name: Verify SQS trigger on Lambda
+        run: |
+          FUNCTION_NAME="SalesNotificationHandler"
+          QUEUE_ARN=$(aws sqs get-queue-attributes \
+            --queue-url "$(aws sqs get-queue-url --queue-name sales-ticket-queue --query QueueUrl --output text)" \
+            --attribute-names QueueArn --query 'Attributes.QueueArn' --output text)
+          MAPS=$(aws lambda list-event-source-mappings --function-name "$FUNCTION_NAME" --output json)
+          echo "$MAPS" | grep -q "$QUEUE_ARN" || {
+            echo "::error::No SQS event source mapping on $FUNCTION_NAME for sales-ticket-queue."
+            echo "Re-run terraform apply with TF_VAR_enable_sqs_trigger=true (see terraform/variables.tf)."
+            exit 1
+          }
+          echo "SQS trigger OK: $QUEUE_ARN -> $FUNCTION_NAME"
+
       - name: Job summary
         working-directory: ./terraform
         run: |
